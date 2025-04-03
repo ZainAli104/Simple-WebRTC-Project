@@ -1,6 +1,9 @@
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 
 export const Receiver = () => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+
     useEffect(() => {
         const socket = new WebSocket('ws://localhost:8080');
         socket.onopen = () => {
@@ -12,14 +15,13 @@ export const Receiver = () => {
     }, []);
 
     function startReceiving(socket: WebSocket) {
-        // const video = document.createElement('video');
-        // document.body.appendChild(video);
-
         const pc: RTCPeerConnection = new RTCPeerConnection();
-        // pc.ontrack = (event) => {
-        //     video.srcObject = new MediaStream([event.track]);
-        //     video.play();
-        // }
+        pc.ontrack = (event) => {
+            console.log(`Received ${JSON.stringify(event.track)}`);
+            if (videoRef.current) {
+                videoRef.current.srcObject = new MediaStream([event.track]);
+            }
+        }
 
         socket.onmessage = (event) => {
             const message = JSON.parse(event.data);
@@ -41,7 +43,30 @@ export const Receiver = () => {
         }
     }
 
-    return <div>
-        Receiver
-    </div>
+    const handlePlay = async () => {
+        if (videoRef.current) {
+            try {
+                await videoRef.current.play();
+                setIsPlaying(true);
+            } catch (error) {
+                console.error('Error playing video:', error);
+            }
+        }
+    };
+
+    return (
+        <div>
+            <h2>Receiver</h2>
+            <video 
+                ref={videoRef}
+                style={{ width: '100%', maxWidth: '640px' }}
+                playsInline
+            />
+            {!isPlaying && (
+                <button onClick={handlePlay}>
+                    Play Video
+                </button>
+            )}
+        </div>
+    );
 }

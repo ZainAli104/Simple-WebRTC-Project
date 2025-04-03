@@ -42,30 +42,41 @@ export const Sender = () => {
             }
         }
 
-        // pc.onnegotiationneeded = async () => {
+        pc.onnegotiationneeded = async () => {
+            console.log("Receiving negotiation");
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             socket?.send(JSON.stringify({
                 type: 'create-offer',
                 sdp: pc.localDescription
             }));
-        // }
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+        stream.getTracks().forEach((track) => {
+            pc.addTrack(track);
+        })
+        // const video = document.createElement('video');
+        // video.srcObject = stream;
+        // await video.play();
+        // document.body.appendChild(video);
+
 
         // getCameraStreamAndSend(pc);
     }
 
-    const getCameraStreamAndSend = (pc: RTCPeerConnection) => {
-        navigator.mediaDevices.getUserMedia({video: true}).then(async (stream) => {
-            const video = document.createElement('video');
-            video.srcObject = stream;
-            await video.play();
-            // this is wrong, should propogate via a component
-            document.body.appendChild(video);
-            stream.getTracks().forEach((track) => {
-                pc?.addTrack(track);
-            });
-        });
-    }
+    // const getCameraStreamAndSend = (pc: RTCPeerConnection) => {
+    //     navigator.mediaDevices.getUserMedia({video: true}).then(async (stream) => {
+    //         const video = document.createElement('video');
+    //         video.srcObject = stream;
+    //         await video.play();
+    //         // this is wrong, should propogate via a component
+    //         document.body.appendChild(video);
+    //         stream.getTracks().forEach((track) => {
+    //             pc?.addTrack(track);
+    //         });
+    //     });
+    // }
 
     return (
         <div>

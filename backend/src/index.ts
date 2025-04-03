@@ -21,7 +21,7 @@ wss.on('connection', function connection(ws) {
             receiverSocket?.send(JSON.stringify({ type: "offer", sdp: message.sdp }));
         } else if (message.type === "create-answer") {
             console.log('create-answer');
-            senderSocket?.send(JSON.stringify({ type: "answer", sdp: message.spd }));
+            senderSocket?.send(JSON.stringify({ type: "answer", sdp: message.sdp }));
         }
     });
 
