@@ -1,9 +1,11 @@
-import {useEffect, useState} from "react"
+import {useEffect, useRef, useState} from "react"
 
 export const Sender = () => {
     const [socket, setSocket] = useState<WebSocket | null>(null);
     const [pc, setPC] = useState<RTCPeerConnection | null>(null);
     const [connectionStatus, setConnectionStatus] = useState<string>("Not Connected");
+    const [isStreaming, setIsStreaming] = useState(false);
+    const localVideoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
         console.log("Sender component mounted");
@@ -25,6 +27,18 @@ export const Sender = () => {
             socket.close();
         }
     }, []);
+
+    const stopStreaming = () => {
+        if (localVideoRef.current && localVideoRef.current.srcObject) {
+            const tracks = (localVideoRef.current.srcObject as MediaStream).getTracks();
+            tracks.forEach(track => track.stop());
+            localVideoRef.current.srcObject = null;
+        }
+        pc?.close();
+        setPC(null);
+        setIsStreaming(false);
+        setConnectionStatus("Not Connected");
+    };
 
     const initiateConn = async () => {
         try {
@@ -100,16 +114,30 @@ export const Sender = () => {
             }
 
             try {
-                console.log("Requesting audio stream");
-                const stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+                console.log("Requesting audio and video stream");
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }, 
+                    audio: true
+                });
+
+                // Show local preview
+                if (localVideoRef.current) {
+                    localVideoRef.current.srcObject = stream;
+                }
+
                 stream.getTracks().forEach((track) => {
                     console.log("Adding track:", track.kind);
                     pc.addTrack(track, stream);
                 });
+
+                setIsStreaming(true);
             } catch (error) {
                 console.error("Error accessing media devices:", error);
+                alert("Could not access camera or microphone. Please check permissions.");
             }
-
         } catch (error) {
             console.error("Error in initiateConn:", error);
         }
@@ -119,7 +147,25 @@ export const Sender = () => {
         <div>
             <h2>Sender</h2>
             <div>Connection Status: {connectionStatus}</div>
-            <button onClick={initiateConn}>Start Sending Audio</button>
+            <div style={{ marginBottom: '1rem' }}>
+                <video 
+                    ref={localVideoRef}
+                    autoPlay 
+                    playsInline 
+                    muted // Mute local preview to prevent feedback
+                    style={{ 
+                        width: '100%', 
+                        maxWidth: '640px',
+                        backgroundColor: '#ddd',
+                        display: isStreaming ? 'block' : 'none'
+                    }}
+                />
+            </div>
+            {!isStreaming ? (
+                <button onClick={initiateConn}>Start Streaming</button>
+            ) : (
+                <button onClick={stopStreaming}>Stop Streaming</button>
+            )}
         </div>
     );
 }

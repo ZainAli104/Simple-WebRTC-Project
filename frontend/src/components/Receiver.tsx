@@ -5,6 +5,7 @@ export const Receiver = () => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<string>("Not Connected");
     const [hasTrack, setHasTrack] = useState(false);
+    const [trackTypes, setTrackTypes] = useState<{audio: boolean, video: boolean}>({ audio: false, video: false });
 
     useEffect(() => {
         const socket = new WebSocket('ws://localhost:8080');
@@ -46,14 +47,29 @@ export const Receiver = () => {
             console.log("ICE connection state:", pc.iceConnectionState);
         };
 
+        // Keep track of received tracks
+        const receivedTracks: MediaStream = new MediaStream();
+
         pc.ontrack = (event) => {
             console.log(`Received track:`, event.track);
             setHasTrack(true);
             
+            // Update track type status
+            setTrackTypes(prev => ({
+                ...prev,
+                [event.track.kind]: true
+            }));
+
             if (videoRef.current) {
-                const stream = new MediaStream([event.track]);
-                videoRef.current.srcObject = stream;
-                console.log("Track added to video element");
+                receivedTracks.addTrack(event.track);
+                videoRef.current.srcObject = receivedTracks;
+                
+                // If it's a video track, try to play immediately
+                if (event.track.kind === 'video') {
+                    videoRef.current.play()
+                        .then(() => setIsPlaying(true))
+                        .catch(error => console.error('Error auto-playing:', error));
+                }
             }
         }
 
@@ -92,9 +108,9 @@ export const Receiver = () => {
             try {
                 await videoRef.current.play();
                 setIsPlaying(true);
-                console.log("Audio playback started");
+                console.log("Media playback started");
             } catch (error) {
-                console.error('Error playing audio:', error);
+                console.error('Error playing media:', error);
             }
         }
     };
@@ -103,16 +119,26 @@ export const Receiver = () => {
         <div>
             <h2>Receiver</h2>
             <div>Connection Status: {connectionStatus}</div>
-            <div>Track Status: {hasTrack ? "Track Received" : "Waiting for Track"}</div>
-            <audio 
-                ref={videoRef}
-                style={{ width: '100%', maxWidth: '640px' }}
-                controls
-                playsInline
-            />
+            <div>Tracks Received: 
+                {trackTypes.audio && ' Audio'} 
+                {trackTypes.video && ' Video'}
+                {!trackTypes.audio && !trackTypes.video && ' None'}
+            </div>
+            <div style={{ marginTop: '1rem' }}>
+                <video 
+                    ref={videoRef}
+                    style={{ 
+                        width: '100%', 
+                        maxWidth: '640px',
+                        backgroundColor: '#ddd'
+                    }}
+                    playsInline
+                    controls // Add controls for volume adjustment
+                />
+            </div>
             {!isPlaying && hasTrack && (
                 <button onClick={handlePlay}>
-                    Play Audio
+                    Play Media
                 </button>
             )}
         </div>
